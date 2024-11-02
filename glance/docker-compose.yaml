@@ -2,9 +2,9 @@ services:
   glance:
     image: glanceapp/glance
     volumes:
-      - ./glance.yaml:/app/glance.yaml
+      - ./glance.yaml:/app/glance.yml
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     ports:
-      - 8080:8082
+      - 8082:8080
     restart: unless-stopped
