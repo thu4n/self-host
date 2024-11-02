@@ -25,3 +25,6 @@ jellyfin/cache
 jellyfin/config
 
 glance/glance.yaml
+
+stirling-pdf/logs
+stirling-pdf/trainingData
