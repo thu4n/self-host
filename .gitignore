@@ -1,26 +1,3 @@
-dify/volumes/app/storage/*
-dify/volumes/certbot/*
-dify/volumes/db/data/*
-dify/volumes/redis/data/*
-dify/volumes/weaviate/*
-dify/volumes/qdrant/*
-dify/volumes/etcd/*
-dify/volumes/minio/*
-dify/volumes/milvus/*
-dify/volumes/chroma/*
-dify/volumes/opensearch/data/*
-dify/volumes/myscale/data/*
-dify/volumes/myscale/log/*
-dify/volumes/unstructured/*
-dify/volumes/pgvector/data/*
-dify/volumes/pgvecto_rs/data/*
-dify/logs
-
-dify/nginx/conf.d/default.conf
-dify/nginx/ssl/*
-!dify/nginx/ssl/.gitkeep
-dify/.env
-
 jellyfin/cache
 jellyfin/config
 
