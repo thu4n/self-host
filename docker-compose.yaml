@@ -1,4 +1,17 @@
 services:
+  reverse-proxy:
+    # The official v3 Traefik docker image
+    image: traefik:v3.4
+    # Enables the web UI and tells Traefik to listen to docker
+    command: --api.insecure=true --providers.docker --entrypoints.web.address=:80
+    ports:
+      # The HTTP port
+      - "80:80"
+      # The Web UI (enabled by --api.insecure=true)
+      - "8080:8080"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
   stirling-pdf:
     image: frooodle/s-pdf:latest
     ports:
@@ -10,14 +23,16 @@ services:
       - DOCKER_ENABLE_SECURITY=false
       - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
       - LANGS=en_GB
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stirling.rule=Host(`pdf.localhost`)"
+      - "traefik.http.routers.stirling.entrypoints=web"
+      - "traefik.http.services.stirling.loadbalancer.server.port=8080"
     restart: unless-stopped
   jellyfin:
     image: jellyfin/jellyfin
     container_name: jellyfin
     user: 1000:1000
-    network_mode: 'host'
-    ports:
-      - '8096:8096'
     volumes:
       - ./jellyfin/config:/config
       - ./jellyfin/cache:/cache
@@ -25,6 +40,11 @@ services:
         source: /mnt/e/YT_Vids/
         target: /media
         read_only: true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.localhost`)"
+      - "traefik.http.routers.jellyfin.entrypoints=web"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
     restart: 'unless-stopped'
     # Optional - may be necessary for docker healthcheck to pass if running in host network mode
     extra_hosts:
@@ -35,6 +55,17 @@ services:
       -  ./glance/glance.yaml:/app/glance.yml
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-    ports:
-      - 8082:8080
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.glance.rule=Host(`glance.localhost`)"
+      - "traefik.http.routers.glance.entrypoints=web"
+      - "traefik.http.services.glance.loadbalancer.server.port=8080"
     restart: unless-stopped
+  
+  # Keep this here for troubleshooting
+  whoami:
+    image: traefik/whoami
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
