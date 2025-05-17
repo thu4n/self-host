@@ -15,8 +15,6 @@ services:
     restart: unless-stopped
   stirling-pdf:
     image: frooodle/s-pdf:latest
-    ports:
-      - '8081:8080'
     volumes:
       - ./stirling-pdf/logs:/logs/
       - ./stirling-pdf/trainingData:/usr/share/tessdata
@@ -65,6 +63,8 @@ services:
   it-tools:
     container_name: it-tools
     image: sharevb/it-tools:latest
+    volumes:
+      - ./it-tools/tools-filter.json:/usr/share/nginx/html/tools-filter.json
     pull_policy: always
     labels:
       - "traefik.enable=true"
