@@ -12,6 +12,7 @@ services:
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
   stirling-pdf:
     image: frooodle/s-pdf:latest
     ports:
@@ -61,7 +62,17 @@ services:
       - "traefik.http.routers.glance.entrypoints=web"
       - "traefik.http.services.glance.loadbalancer.server.port=8080"
     restart: unless-stopped
-  
+  it-tools:
+    container_name: it-tools
+    image: sharevb/it-tools:latest
+    pull_policy: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tools.rule=Host(`tools.localhost`)"
+      - "traefik.http.routers.tools.entrypoints=web"
+      - "traefik.http.services.tools.loadbalancer.server.port=8080"
+    restart: unless-stopped
+
   # Keep this here for troubleshooting
   whoami:
     image: traefik/whoami
