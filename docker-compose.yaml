@@ -39,6 +39,9 @@ services:
         source: /mnt/e/YT_Vids/
         target: /media
         read_only: true
+      - type: bind
+        source: /mnt/c/Users/Admin/Music
+        target: /music
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jellyfin.rule=Host(`jellyfin.localhost`)"
