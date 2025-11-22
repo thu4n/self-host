@@ -5,3 +5,5 @@ glance/glance.yaml
 
 stirling-pdf/logs
 stirling-pdf/trainingData
+
+*.env

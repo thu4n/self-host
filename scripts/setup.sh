@@ -6,6 +6,7 @@ mkdir -p ./stirling-pdf/trainingData
 mkdir -p ./jellyfin/config
 mkdir -p ./jellyfin/cache
 mkdir -p ./glance
+mkdir -p ./cloudflare
 
 # Set ownership
 USER_ID=$(id -u)

@@ -2,6 +2,7 @@ services:
   reverse-proxy:
     # The official v3 Traefik docker image
     image: traefik:v3.4
+    container_name: reverse-proxy
     # Enables the web UI and tells Traefik to listen to docker
     command: --api.insecure=true --providers.docker --entrypoints.web.address=:80
     ports:
@@ -15,6 +16,7 @@ services:
     restart: unless-stopped
   stirling-pdf:
     image: frooodle/s-pdf:latest
+    container_name: pdf
     volumes:
       - ./stirling-pdf/logs:/logs/
       - ./stirling-pdf/trainingData:/usr/share/tessdata
@@ -28,6 +30,15 @@ services:
       - "traefik.http.routers.stirling.entrypoints=web"
       - "traefik.http.services.stirling.loadbalancer.server.port=8080"
     restart: unless-stopped
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    env_file:
+      - ./cloudflare/.env
+    volumes:
+      - ./cloudflare:/etc/cloudflared
   jellyfin:
     image: jellyfin/jellyfin
     container_name: jellyfin
@@ -53,6 +64,7 @@ services:
       - 'host.docker.internal:host-gateway'
   glance:
     image: glanceapp/glance
+    container_name: glance
     volumes:
       -  ./glance/glance.yaml:/app/glance.yml
       - /etc/timezone:/etc/timezone:ro
@@ -64,8 +76,8 @@ services:
       - "traefik.http.services.glance.loadbalancer.server.port=8080"
     restart: unless-stopped
   it-tools:
-    container_name: it-tools
     image: sharevb/it-tools:latest
+    container_name: it-tools
     volumes:
       - ./it-tools/tools-filter.json:/usr/share/nginx/html/tools-filter.json
     pull_policy: always
@@ -75,7 +87,24 @@ services:
       - "traefik.http.routers.tools.entrypoints=web"
       - "traefik.http.services.tools.loadbalancer.server.port=8080"
     restart: unless-stopped
-
+  homebox:
+    image: ghcr.io/sysadminsmedia/homebox:latest
+    container_name: homebox
+    restart: always
+    environment:
+    - HBOX_LOG_LEVEL=info
+    - HBOX_LOG_FORMAT=text
+    - HBOX_WEB_MAX_FILE_UPLOAD=10
+    - HBOX_OPTIONS_ALLOW_ANALYTICS=false
+    volumes:
+      - homebox-data:/data/
+    ports:
+      - 3100:7745
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homebox.rule=Host(`homebox.localhost`) || Host(`homebox.thu4n.dev`)"
+      - "traefik.http.routers.homebox.entrypoints=web"
+      - "traefik.http.services.homebox.loadbalancer.server.port=7745"
   # Keep this here for troubleshooting
   whoami:
     image: traefik/whoami
@@ -83,3 +112,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
       - "traefik.http.routers.whoami.entrypoints=web"
+volumes:
+   homebox-data:
+     driver: local

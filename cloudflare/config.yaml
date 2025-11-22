@@ -1,0 +1,16 @@
+tunnel: 2c3d0f68-1ae3-45d1-ba4d-0097b456dc3a
+credentials-file: /etc/cloudflared/2c3d0f68-1ae3-45d1-ba4d-0097b456dc3a.json
+
+ingress:
+  # - hostname: jellyfin.thu4n.dev
+  #   service: http://reverse-proxy:80
+  # - hostname: stirlingpdf.yourdomain.com
+  #   service: http://reverse-proxy:80
+  # - hostname: glance.thu4n.dev
+  #   service: http://reverse-proxy:80
+  - hostname: tools.thu4n.dev
+    service: http://reverse-proxy:80
+  - hostname: homebox.thu4n.dev
+    service: http://reverse-proxy:80
+  # default fallback
+  - service: http_status:404
