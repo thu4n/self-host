@@ -1,3 +1,20 @@
+x-db-env: &db_env
+  POSTGRES_USER: ${SURE_POSTGRES_USER:-sure_user}
+  POSTGRES_PASSWORD: ${SURE_POSTGRES_PASSWORD:-sure_password}
+  POSTGRES_DB: ${SURE_POSTGRES_DB:-sure_production}
+
+x-rails-env: &rails_env
+  <<: *db_env
+  SECRET_KEY_BASE: ${SURE_SECRET_KEY_BASE:-a7523c3d0ae56415046ad8abae168d71074a79534a7062258f8d1d51ac2f76d3c3bc86d86b6b0b307df30d9a6a90a2066a3fa9e67c5e6f374dbd7dd4e0778e13}
+  SELF_HOSTED: "true"
+  RAILS_FORCE_SSL: "false"
+  RAILS_ASSUME_SSL: "false"
+  DB_HOST: sure-db
+  DB_PORT: 5432
+  REDIS_URL: redis://sure-redis:6379/1
+# NOTE: enabling OpenAI will incur costs when you use AI-related features in the app (chat, rules).  Make sure you have set appropriate spend limits on your account before adding this.
+  OPENAI_ACCESS_TOKEN: ${SURE_OPENAI_ACCESS_TOKEN}
+
 services:
   reverse-proxy:
     # The official v3 Traefik docker image
@@ -13,6 +30,9 @@ services:
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - default
+      - sure_net
     restart: unless-stopped
   stirling-pdf:
     image: frooodle/s-pdf:latest
@@ -30,15 +50,15 @@ services:
       - "traefik.http.routers.stirling.entrypoints=web"
       - "traefik.http.services.stirling.loadbalancer.server.port=8080"
     restart: unless-stopped
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflared
-    restart: unless-stopped
-    command: tunnel run
-    env_file:
-      - ./cloudflare/.env
-    volumes:
-      - ./cloudflare:/etc/cloudflared
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: cloudflared
+  #   restart: unless-stopped
+  #   command: tunnel run
+  #   env_file:
+  #     - ./cloudflare/.env
+  #   volumes:
+  #     - ./cloudflare:/etc/cloudflared
   jellyfin:
     image: jellyfin/jellyfin
     container_name: jellyfin
@@ -87,24 +107,90 @@ services:
       - "traefik.http.routers.tools.entrypoints=web"
       - "traefik.http.services.tools.loadbalancer.server.port=8080"
     restart: unless-stopped
-  homebox:
-    image: ghcr.io/sysadminsmedia/homebox:latest
-    container_name: homebox
-    restart: always
-    environment:
-    - HBOX_LOG_LEVEL=info
-    - HBOX_LOG_FORMAT=text
-    - HBOX_WEB_MAX_FILE_UPLOAD=10
-    - HBOX_OPTIONS_ALLOW_ANALYTICS=false
+  # homebox:
+  #   image: ghcr.io/sysadminsmedia/homebox:latest
+  #   container_name: homebox
+  #   restart: always
+  #   environment:
+  #   - HBOX_LOG_LEVEL=info
+  #   - HBOX_LOG_FORMAT=text
+  #   - HBOX_WEB_MAX_FILE_UPLOAD=10
+  #   - HBOX_OPTIONS_ALLOW_ANALYTICS=false
+  #   volumes:
+  #     - homebox-data:/data/
+  #   ports:
+  #     - 3100:7745
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.homebox.rule=Host(`homebox.localhost`) || Host(`homebox.thu4n.dev`)"
+  #     - "traefik.http.routers.homebox.entrypoints=web"
+  #     - "traefik.http.services.homebox.loadbalancer.server.port=7745"
+
+  sure-web:
+    image: ghcr.io/we-promise/sure:latest
     volumes:
-      - homebox-data:/data/
+      - sure-app-storage:/rails/storage
     ports:
-      - 3100:7745
+      - 3001:3000
+    restart: unless-stopped
+    environment:
+      <<: *rails_env
+    depends_on:
+      sure-db:
+        condition: service_healthy
+      sure-redis:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.homebox.rule=Host(`homebox.localhost`) || Host(`homebox.thu4n.dev`)"
-      - "traefik.http.routers.homebox.entrypoints=web"
-      - "traefik.http.services.homebox.loadbalancer.server.port=7745"
+      - "traefik.http.routers.sure-web.rule=Host(`sure.localhost`)"
+      - "traefik.http.routers.sure-web.entrypoints=web"
+      - "traefik.http.services.sure-web.loadbalancer.server.port=3000"
+    networks:
+      - sure_net
+
+  sure-worker:
+    image: ghcr.io/we-promise/sure:latest
+    command: bundle exec sidekiq
+    volumes:
+      - sure-app-storage:/rails/storage
+    restart: unless-stopped
+    depends_on:
+      sure-db:
+        condition: service_healthy
+      sure-redis:
+        condition: service_healthy
+    environment:
+      <<: *rails_env
+    networks:
+      - sure_net
+
+  sure-db:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - sure-postgres-data:/var/lib/postgresql/data
+    environment:
+      <<: *db_env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sure_net
+
+  sure-redis:
+    image: redis:latest
+    restart: unless-stopped
+    volumes:
+      - sure-redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sure_net
   # Keep this here for troubleshooting
   whoami:
     image: traefik/whoami
@@ -112,6 +198,14 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
       - "traefik.http.routers.whoami.entrypoints=web"
+
 volumes:
-   homebox-data:
-     driver: local
+  sure-app-storage:
+  sure-postgres-data:
+  sure-redis-data:
+  # homebox-data:
+  #   driver: local
+
+networks:
+  sure_net:
+    driver: bridge
